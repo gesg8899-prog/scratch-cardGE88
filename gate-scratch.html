@@ -3,134 +3,143 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Scratch Card – Player Gate</title>
+<title>Player Gate – Scratch Event</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
 body {
-  font-family: Arial, sans-serif;
+  font-family: 'Poppins', sans-serif;
   background: #000;
   color: #ffd700;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
   text-align: center;
-  padding: 60px 30px;
 }
-.gate {
-  max-width: 450px;
-  margin: auto;
+.card {
+  width: 360px;
+  background: rgba(20,20,20,0.8);
   padding: 30px;
   border-radius: 20px;
-  background: linear-gradient(145deg, #1a1a1a, #000);
-  border: 2px solid #ffd700;
-  box-shadow: 0 0 25px #ffcc00;
+  border: 2px solid #d4af37;
+  box-shadow: 0 0 20px rgba(255,215,0,0.3);
 }
 input {
-  width: 80%;
+  width: 90%;
   padding: 12px;
-  margin-bottom: 15px;
-  border-radius: 10px;
-  border: 1px solid #ffd700;
-  background: #0d0d0d;
+  border: 1px solid #d4af37;
+  background: rgba(30,30,30,0.9);
   color: #ffd700;
-  font-size: 16px;
+  border-radius: 12px;
+  margin-top: 12px;
 }
 button {
-  padding: 12px 20px;
-  margin: 5px;
-  border-radius: 10px;
+  width: 90%;
+  padding: 14px;
+  margin-top: 15px;
   border: none;
-  background: #ffd700;
+  background: linear-gradient(135deg,#d4af37,#ffdf70);
   color: #000;
-  font-weight: bold;
+  font-size: 16px;
+  border-radius: 12px;
   cursor: pointer;
+  font-weight: 600;
+  transition: .25s;
 }
-.error { color: #ff4040; margin-top: 10px; }
-.success { color: #66ff66; margin-top: 10px; }
+button:hover {
+  transform: scale(1.03);
+}
+#error {
+  margin-top: 15px;
+  color: #ff5656;
+  font-weight: 600;
+}
+#success {
+  margin-top: 15px;
+  color: #7dff7d;
+  font-weight: 600;
+}
 </style>
 </head>
 <body>
-<div class="gate">
-  <h1 style="font-size: 26px; font-weight: 700; margin-bottom: 10px;">Enter Access Code</h1>
-  <input type="text" id="codeInput" placeholder="Enter your code">
-  <button onclick="validateCode()">Enter</button>
-  <p id="msg"></p>
+
+<div class="card">
+  <h2>🎟 Scratch Event – Player Gate</h2>
+  <p>Enter Your Access Code</p>
+
+  <input type="text" id="playerCode" placeholder="Enter code here">
+  <button onclick="verifyCode()">Enter Game</button>
+
+  <div id="error"></div>
+  <div id="success"></div>
 </div>
 
 <script>
 // ================================
-// CONFIG
+// CONFIG – Ganti sesuai repo kamu
 // ================================
-const rawURL =
-  "https://raw.githubusercontent.com/gesg8899-prog/scratch-gate/main/scratch_codes.json";
+const JSON_URL = "https://raw.githubusercontent.com/USERNAME/REPO/main/scratch_codes.json";
 
-const redirectURL = "https://is.gd/scratchGE88";
-
-// ================================
-// LOCAL CACHE (khusus scratch)
-// ================================
-function getUsedCodes() {
-  const stored = localStorage.getItem('usedScratchCodes') || "[]";
-  return JSON.parse(stored);
-}
-
-function addUsedCode(code) {
-  const usedCodes = getUsedCodes();
-  if(!usedCodes.includes(code)) {
-    usedCodes.push(code);
-    localStorage.setItem('usedScratchCodes', JSON.stringify(usedCodes));
-  }
-}
+// Dari admin generator
+// window.markCodeUsedAPI(code) <-- otomatis terhubung jika file berada di domain yang sama
+// Jika tidak, replace dengan API webhook sendiri
 
 // ================================
-// FETCH CODES
+// MAIN FUNCTION
 // ================================
-async function loadCodes() {
-  const res = await fetch(rawURL + "?t=" + Date.now());
-  if(!res.ok) throw new Error("Failed to load JSON");
-  return await res.json();
-}
+async function verifyCode(){
+  const input = document.getElementById("playerCode").value.trim().toUpperCase();
+  document.getElementById("error").innerHTML = "";
+  document.getElementById("success").innerHTML = "";
 
-// ================================
-// VALIDATE CODE
-// ================================
-async function validateCode() {
-  const msg = document.getElementById("msg");
-  msg.textContent = "";
-
-  const code = document.getElementById("codeInput").value.trim().toUpperCase();
-  if(!code) {
-    msg.textContent = "Code cannot be empty";
-    msg.className = "error";
+  if(!input){
+    showError("Please enter your access code!");
     return;
   }
 
+  let data;
   try {
-    const codes = await loadCodes();
-    const entry = codes.find(c => c.code === code);
-    const usedCodes = getUsedCodes();
-
-    if(!entry) {
-      msg.textContent = "Code not found";
-      msg.className = "error";
-      return;
-    }
-
-    if(entry.used || usedCodes.includes(code)) {
-      msg.textContent = "Code already used";
-      msg.className = "error";
-      return;
-    }
-
-    // tandai lokal
-    addUsedCode(code);
-
-    // redirect
-    msg.textContent = "Access Granted! Redirecting...";
-    msg.className = "success";
-    setTimeout(()=>{ window.location.href = redirectURL; }, 800);
-
-  } catch(e) {
-    msg.textContent = "Connection error";
-    msg.className = "error";
+    const req = await fetch(JSON_URL + "?t=" + Date.now());
+    data = await req.json();
+  } catch {
+    showError("Failed loading player code database!");
+    return;
   }
+
+  const found = data.find(c => c.code === input);
+
+  if(!found){
+    showError("❌ Code Not Found");
+    return;
+  }
+  if(found.used){
+    showError("⚠️ Code Already Used");
+    return;
+  }
+
+  // Valid → mark used via admin generator API
+  if(typeof window.markCodeUsedAPI === "function"){
+    const result = await window.markCodeUsedAPI(input);
+    if(!result){
+      showError("⚠️ Failed to update status. Try again.");
+      return;
+    }
+  }
+
+  // SUCCESS
+  document.getElementById("success").innerHTML = "✅ Code Accepted! Redirecting...";
+
+  setTimeout(()=>{
+    window.location.href = "scratch-game.html"; 
+    // GANTI dengan link scratch game kamu
+  }, 1000);
+}
+
+// Helper UI
+function showError(msg){
+  document.getElementById("error").innerHTML = msg;
 }
 </script>
+
 </body>
 </html>
